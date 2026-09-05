@@ -128,6 +128,7 @@ export interface CartLine {
   price: number;
   qty: number;
   tone: ProductTone;
+  image?: string;
   lineTotal: number;
   available: boolean;
   stockQuantity: number;

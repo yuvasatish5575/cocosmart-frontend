@@ -1174,7 +1174,7 @@ export function CartItemRow({ line, onQtyChange, onRemove }: CartItemRowProps) {
   return (
     <div className="flex gap-3 py-4">
       <Link to={`/product/${line.slug}`} className="h-16 w-16 shrink-0 overflow-hidden rounded-md">
-        <ProductMedia label="" tone={line.tone} showLabel={false} />
+        <ProductMedia label="" tone={line.tone} image={line.image} showLabel={false} />
       </Link>
       <div className="flex flex-1 flex-col gap-1.5 min-w-0">
         <div className="flex items-start justify-between gap-2">
