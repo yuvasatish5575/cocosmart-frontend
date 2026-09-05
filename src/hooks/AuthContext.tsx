@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { authService } from "@/services/authService";
+import { authService, type RegisterResult } from "@/services/authService";
 import { tokenStore, ApiClientError } from "@/lib/apiClient";
 import type { AuthUser } from "@/data/types";
 
@@ -8,7 +8,8 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
-  register: (input: { name: string; email: string; password: string; phone?: string }) => Promise<AuthUser>;
+  /** Creates the account but does not sign in — the account is unverified until /verify-email succeeds. */
+  register: (input: { name: string; email: string; password: string; confirmPassword: string; phone?: string }) => Promise<RegisterResult>;
   logout: () => Promise<void>;
 }
 
@@ -53,12 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result.user;
   }
 
-  async function register(input: { name: string; email: string; password: string; phone?: string }) {
-    const result = await authService.register(input);
-    tokenStore.setAccessToken(result.accessToken);
-    tokenStore.setRefreshToken(result.refreshToken);
-    setUser(result.user);
-    return result.user;
+  async function register(input: { name: string; email: string; password: string; confirmPassword: string; phone?: string }) {
+    return authService.register(input);
   }
 
   async function logout() {

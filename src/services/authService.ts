@@ -7,9 +7,20 @@ interface AuthResult {
   refreshToken: string;
 }
 
+export interface RegisterResult {
+  email: string;
+  message: string;
+}
+
 export const authService = {
-  register(input: { name: string; email: string; password: string; phone?: string }) {
-    return apiFetch<AuthResult>("/auth/register", { method: "POST", body: input, auth: false });
+  register(input: { name: string; email: string; password: string; confirmPassword: string; phone?: string }) {
+    return apiFetch<RegisterResult>("/auth/register", { method: "POST", body: input, auth: false });
+  },
+  verifyEmail(input: { email: string; code: string }) {
+    return apiFetch<{ message: string }>("/auth/verify-email", { method: "POST", body: input, auth: false });
+  },
+  resendCode(email: string) {
+    return apiFetch<{ message: string }>("/auth/resend-code", { method: "POST", body: { email }, auth: false });
   },
   login(input: { email: string; password: string }) {
     return apiFetch<AuthResult>("/auth/login", { method: "POST", body: input, auth: false });
