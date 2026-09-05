@@ -1068,7 +1068,7 @@ export function RecommendationCarousel({ title, products: list }: { title: strin
         {list.map((p) => (
           <Link key={p.id} to={`/product/${p.slug}`} className="flex w-32 shrink-0 flex-col gap-2 rounded-md border border-line p-2 transition-colors hover:border-coconut">
             <div className="aspect-square overflow-hidden rounded-sm">
-              <ProductMedia label="" tone={p.tone} showLabel={false} />
+              <ProductMedia label="" tone={p.tone} image={p.image} showLabel={false} />
             </div>
             <span className="line-clamp-2 text-xs font-semibold text-charcoal">{p.name}</span>
             <span className="text-xs font-bold text-coconut-dark">{formatINR(p.price)}</span>
@@ -1088,7 +1088,7 @@ export function SubscriptionCard({ product, onSubscribe }: { product: Product; o
   return (
     <article className="flex flex-col overflow-hidden rounded-lg border border-line bg-white">
       <div className="aspect-square">
-        <ProductMedia label={product.name} tone={product.tone} showLabel={false} />
+        <ProductMedia label={product.name} tone={product.tone} image={product.image} showLabel={false} />
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">
         <h3 className="text-sm font-bold text-charcoal">{product.name}</h3>
