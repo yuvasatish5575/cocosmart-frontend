@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Lock } from "lucide-react";
-import { Logo, Input, Button, CoconutLeaf } from "@/components/Frontend";
+import { Logo, Button, CoconutLeaf } from "@/components/Frontend";
+import { PasswordInput } from "@/components/PasswordInput";
 import { useToast } from "@/hooks/useToast";
 import { authService } from "@/services/authService";
 import { ApiClientError } from "@/lib/apiClient";
@@ -63,31 +63,21 @@ export default function ResetPassword() {
                 {errors.form}
               </p>
             )}
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-4 top-[38px] h-4 w-4 text-charcoal-soft" strokeWidth={1.8} />
-              <Input
-                label="New password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                error={errors.password}
-                className="pl-10"
-                autoComplete="new-password"
-                autoFocus
-              />
-            </div>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-4 top-[38px] h-4 w-4 text-charcoal-soft" strokeWidth={1.8} />
-              <Input
-                label="Confirm new password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                error={errors.confirmPassword}
-                className="pl-10"
-                autoComplete="new-password"
-              />
-            </div>
+            <PasswordInput
+              label="New password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={errors.password}
+              autoComplete="new-password"
+              autoFocus
+            />
+            <PasswordInput
+              label="Confirm new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              error={errors.confirmPassword}
+              autoComplete="new-password"
+            />
             <Button type="submit" size="lg" className="mt-2 w-full" loading={submitting}>
               Update Password
             </Button>

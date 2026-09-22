@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShieldCheck, MapPin, Plus } from "lucide-react";
-import { CheckoutStepper, Input, Button } from "@/components/Frontend";
+import { CheckoutStepper, Input, Button, SearchableSelect } from "@/components/Frontend";
 import { useCart } from "@/hooks/CartContext";
 import { useToast } from "@/hooks/useToast";
 import { addressService } from "@/services/addressService";
 import { orderService } from "@/services/orderService";
 import { ApiClientError } from "@/lib/apiClient";
 import { formatINR } from "@/lib/utils";
+import { INDIAN_STATES, getCitiesForState } from "@/data/indianStates";
 import type { Address, PaymentMethod } from "@/data/types";
+
+const INDIAN_PHONE_PATTERN = /^[6-9]\d{9}$/;
+const PIN_CODE_PATTERN = /^\d{6}$/;
 
 const slots = ["Tomorrow, 9am–12pm", "Tomorrow, 2pm–6pm", "Sat, 9am–12pm", "Sat, 2pm–6pm"];
 const paymentMethods: { id: PaymentMethod; label: string }[] = [
@@ -37,6 +41,7 @@ export default function Checkout() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
   const [form, setForm] = useState<AddressForm>(emptyAddress);
+  const [touched, setTouched] = useState<Partial<Record<keyof AddressForm, boolean>>>({});
   const [slot, setSlot] = useState(slots[0]);
   const [payment, setPayment] = useState<PaymentMethod>("UPI");
   const [promo, setPromo] = useState("");
@@ -57,9 +62,25 @@ export default function Checkout() {
       .finally(() => setAddressesLoading(false));
   }, []);
 
-  const formValid = !!(form.fullName && form.phone && form.addressLine1 && form.city && form.state && form.postalCode.length >= 3);
+  const formValid = !!(
+    form.fullName.trim() &&
+    INDIAN_PHONE_PATTERN.test(form.phone) &&
+    form.addressLine1.trim() &&
+    form.state &&
+    form.city &&
+    PIN_CODE_PATTERN.test(form.postalCode)
+  );
   const addressValid = addingNew ? formValid : !!selectedAddressId;
   const selectedAddress = savedAddresses.find((a) => a.id === selectedAddressId);
+
+  function markTouched(field: keyof AddressForm) {
+    setTouched((t) => ({ ...t, [field]: true }));
+  }
+
+  /** Changing State invalidates whatever City was picked for the old one — never allow a stale, mismatched combination. */
+  function handleStateChange(nextState: string) {
+    setForm((f) => ({ ...f, state: nextState, city: "" }));
+  }
 
   useEffect(() => {
     if (lines.length === 0) navigate("/shop", { replace: true });
@@ -152,17 +173,66 @@ export default function Checkout() {
                       </button>
                     )}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <Input label="Full name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-                      <Input label="Phone number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                      <Input
+                        label="Full name"
+                        value={form.fullName}
+                        onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                        onBlur={() => {
+                          markTouched("fullName");
+                          setForm((f) => ({ ...f, fullName: f.fullName.trim() }));
+                        }}
+                        error={touched.fullName && !form.fullName.trim() ? "Full name is required." : undefined}
+                      />
+                      <Input
+                        label="Phone number"
+                        value={form.phone}
+                        onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                        onBlur={() => markTouched("phone")}
+                        error={touched.phone && form.phone && !INDIAN_PHONE_PATTERN.test(form.phone) ? "Enter a valid 10-digit Indian mobile number." : undefined}
+                        inputMode="numeric"
+                        maxLength={10}
+                      />
                       <Input
                         label="Address line"
                         className="sm:col-span-2"
                         value={form.addressLine1}
                         onChange={(e) => setForm({ ...form, addressLine1: e.target.value })}
+                        onBlur={() => markTouched("addressLine1")}
+                        error={touched.addressLine1 && !form.addressLine1.trim() ? "Address line is required." : undefined}
                       />
-                      <Input label="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-                      <Input label="State" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
-                      <Input label="PIN code" value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} />
+                      <SearchableSelect
+                        label="State"
+                        value={form.state}
+                        onChange={handleStateChange}
+                        onBlur={() => markTouched("state")}
+                        options={INDIAN_STATES as unknown as string[]}
+                        placeholder="Select State"
+                        searchPlaceholder="Search state…"
+                        emptyMessage="No states found"
+                        error={touched.state && !form.state ? "Please select a state." : undefined}
+                      />
+                      <SearchableSelect
+                        label="City"
+                        value={form.city}
+                        onChange={(city) => setForm((f) => ({ ...f, city }))}
+                        onBlur={() => markTouched("city")}
+                        options={form.state ? getCitiesForState(form.state) : []}
+                        placeholder="Select City"
+                        searchPlaceholder="Search city…"
+                        disabled={!form.state}
+                        disabledHint="Select a state first"
+                        emptyMessage="No cities found"
+                        error={touched.city && form.state && !form.city ? "Please select a city." : undefined}
+                      />
+                      <Input
+                        label="PIN code"
+                        value={form.postalCode}
+                        onChange={(e) => setForm({ ...form, postalCode: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+                        onBlur={() => markTouched("postalCode")}
+                        error={touched.postalCode && form.postalCode && !PIN_CODE_PATTERN.test(form.postalCode) ? "Please enter a valid 6-digit PIN code." : undefined}
+                        inputMode="numeric"
+                        maxLength={6}
+                      />
                     </div>
                   </div>
                 )}

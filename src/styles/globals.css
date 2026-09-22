@@ -206,3 +206,117 @@ button {
   overflow: hidden;
   z-index: 0;
 }
+
+/* Slow liquid movement gives the hero the clarity and lift of chilled coconut water. */
+.hero-liquid {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+  background: radial-gradient(ellipse at 78% 28%, rgba(206, 239, 218, 0.14), transparent 36%);
+}
+
+.hero-liquid__wash,
+.hero-liquid__wave,
+.hero-liquid__glint,
+.hero-liquid__bubble {
+  position: absolute;
+  display: block;
+}
+
+.hero-liquid__wash {
+  inset: -20% -10% 18% 34%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  transform: rotate(-12deg);
+  animation: liquid-drift 14s ease-in-out infinite alternate;
+}
+
+.hero-liquid__wave {
+  left: -12%;
+  width: 124%;
+  height: 32%;
+  border: 1px solid rgba(226, 247, 230, 0.16);
+  border-radius: 48% 52% 0 0 / 24% 28% 0 0;
+  transform: rotate(-3deg);
+}
+
+.hero-liquid__wave--one {
+  bottom: -19%;
+  animation: liquid-wave-one 11s ease-in-out infinite alternate;
+}
+
+.hero-liquid__wave--two {
+  bottom: -27%;
+  opacity: 0.55;
+  animation: liquid-wave-two 15s ease-in-out infinite alternate;
+}
+
+.hero-liquid__bubble {
+  width: 8px;
+  height: 8px;
+  border: 1px solid rgba(238, 255, 241, 0.38);
+  border-radius: 50%;
+  box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.24);
+  animation: bubble-rise 8s ease-in infinite;
+}
+
+.hero-liquid__bubble--one {
+  right: 18%;
+  bottom: 10%;
+  animation-delay: -2s;
+}
+
+.hero-liquid__bubble--two {
+  right: 33%;
+  bottom: 4%;
+  width: 5px;
+  height: 5px;
+  animation-delay: -5s;
+}
+
+.hero-liquid__bubble--three {
+  right: 11%;
+  bottom: 26%;
+  width: 12px;
+  height: 12px;
+  animation-delay: -6.5s;
+}
+
+.hero-liquid__glint {
+  top: 18%;
+  right: 20%;
+  width: 9rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.48), transparent);
+  transform: rotate(-25deg);
+  animation: glint-sweep 7s ease-in-out infinite;
+}
+
+@keyframes liquid-drift {
+  from { transform: translate3d(-2%, 1%, 0) rotate(-12deg) scale(1); }
+  to { transform: translate3d(3%, -2%, 0) rotate(-8deg) scale(1.04); }
+}
+
+@keyframes liquid-wave-one {
+  from { transform: translateX(-3%) rotate(-3deg); }
+  to { transform: translateX(4%) rotate(1deg); }
+}
+
+@keyframes liquid-wave-two {
+  from { transform: translateX(4%) rotate(2deg); }
+  to { transform: translateX(-4%) rotate(-2deg); }
+}
+
+@keyframes bubble-rise {
+  0% { opacity: 0; transform: translate3d(0, 18px, 0) scale(0.7); }
+  20%, 70% { opacity: 0.7; }
+  100% { opacity: 0; transform: translate3d(-12px, -170px, 0) scale(1.1); }
+}
+
+@keyframes glint-sweep {
+  0%, 100% { opacity: 0; transform: translateX(-2rem) rotate(-25deg); }
+  35%, 65% { opacity: 0.7; }
+  50% { transform: translateX(2rem) rotate(-25deg); }
+}

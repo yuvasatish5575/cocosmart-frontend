@@ -28,6 +28,7 @@ import {
   Minus,
   Package,
   PackageSearch,
+  Palmtree,
   Phone,
   Plus,
   Repeat,
@@ -210,6 +211,193 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({ label, error, h
 });
 Input.displayName = "Input";
 
+interface SearchableSelectProps {
+  label?: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+  searchPlaceholder?: string;
+  disabled?: boolean;
+  disabledHint?: string;
+  error?: string;
+  emptyMessage?: string;
+  id?: string;
+  /** Fires whenever the dropdown closes (selection, Escape, or outside click) — the closest equivalent to a plain input's onBlur, for "only show errors after interaction" validation timing. */
+  onBlur?: () => void;
+}
+
+/**
+ * A searchable, single-select dropdown styled to match `Input` exactly (same
+ * height, border, radius, focus ring) — used for State/City on the address
+ * forms, where free text isn't acceptable but a plain HTML `<select>` can't
+ * offer search over a long list. Implements the WAI-ARIA combobox pattern by
+ * hand (click-outside, Escape, arrow keys, Enter) rather than pulling in a
+ * new dependency for one component.
+ */
+export function SearchableSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder = "Select…",
+  searchPlaceholder = "Search…",
+  disabled = false,
+  disabledHint,
+  error,
+  emptyMessage = "No results found",
+  id,
+  onBlur,
+}: SearchableSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const listId = `${inputId}-listbox`;
+
+  const filtered = query.trim() ? options.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase())) : options;
+
+  function dismiss() {
+    setOpen(false);
+    onBlur?.();
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) dismiss();
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery("");
+    setActiveIndex(Math.max(0, options.indexOf(value)));
+    const frame = requestAnimationFrame(() => searchRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  function select(option: string) {
+    onChange(option);
+    dismiss();
+    triggerRef.current?.focus();
+  }
+
+  function close() {
+    dismiss();
+    triggerRef.current?.focus();
+  }
+
+  function handleSearchKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(filtered.length - 1, i + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(0, i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const option = filtered[activeIndex];
+      if (option) select(option);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5" ref={containerRef}>
+      {label && (
+        <label htmlFor={inputId} className="text-xs font-bold text-charcoal-muted">
+          {label}
+        </label>
+      )}
+      <div className="relative">
+        <button
+          ref={triggerRef}
+          type="button"
+          id={inputId}
+          disabled={disabled}
+          onClick={() => (open ? dismiss() : setOpen(true))}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-haspopup="listbox"
+          aria-invalid={!!error}
+          className={cn(
+            "flex h-12 w-full items-center justify-between rounded-md border border-line bg-white px-4 text-left text-sm transition-colors",
+            "focus:outline-none focus:border-coconut focus:ring-2 focus:ring-coconut-50",
+            value ? "text-charcoal" : "text-charcoal-soft",
+            disabled && "cursor-not-allowed bg-cream-dark text-charcoal-soft opacity-70",
+            error && "border-error focus:border-error focus:ring-error-soft"
+          )}
+        >
+          <span className="truncate">{value || placeholder}</span>
+          <ChevronDown className={cn("h-4 w-4 shrink-0 text-charcoal-muted transition-transform", open && "rotate-180")} aria-hidden="true" />
+        </button>
+
+        {open && !disabled && (
+          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 overflow-hidden rounded-md border border-line bg-white shadow-lifted">
+            <div className="flex items-center gap-2 border-b border-line px-3 py-2">
+              <Search className="h-4 w-4 shrink-0 text-charcoal-soft" aria-hidden="true" />
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setActiveIndex(0);
+                }}
+                onKeyDown={handleSearchKeyDown}
+                placeholder={searchPlaceholder}
+                className="w-full bg-transparent text-sm text-charcoal placeholder:text-charcoal-soft focus:outline-none"
+                aria-label={searchPlaceholder}
+              />
+            </div>
+            <ul id={listId} role="listbox" aria-label={label ?? placeholder} className="max-h-56 overflow-y-auto py-1">
+              {filtered.length === 0 ? (
+                <li className="px-4 py-3 text-sm text-charcoal-soft">{emptyMessage}</li>
+              ) : (
+                filtered.map((option, i) => (
+                  <li
+                    key={option}
+                    role="option"
+                    aria-selected={option === value}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    onClick={() => select(option)}
+                    className={cn(
+                      "flex cursor-pointer items-center justify-between px-4 py-2 text-sm",
+                      i === activeIndex ? "bg-coconut-50 text-coconut-dark" : "text-charcoal",
+                      option === value && "font-semibold"
+                    )}
+                  >
+                    {option}
+                    {option === value && <Check className="h-3.5 w-3.5 shrink-0 text-coconut" aria-hidden="true" />}
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        )}
+      </div>
+      {error ? (
+        <span className="text-xs text-error" role="alert">
+          {error}
+        </span>
+      ) : (
+        disabled && disabledHint && <span className="text-xs text-charcoal-soft">{disabledHint}</span>
+      )}
+    </div>
+  );
+}
+
 interface EmptyStateProps {
   icon?: ReactNode;
   title: string;
@@ -385,13 +573,20 @@ interface LogoProps {
 export function Logo({ className, variant = "dark", markOnly = false }: LogoProps) {
   const wordColor = variant === "light" ? "text-white" : "text-coconut";
   const accentColor = variant === "light" ? "text-gold-light" : "text-gold-dark";
+  const taglineColor = variant === "light" ? "text-white/55" : "text-charcoal-soft";
 
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       <img src="/cocosmart-icon.png" alt="" aria-hidden="true" className="h-8 w-8 shrink-0" />
       {!markOnly && (
-        <span className={cn("font-display text-xl font-semibold tracking-tight", wordColor)}>
-          Coco<span className={accentColor}>Smart</span>
+        <span className="flex flex-col leading-none">
+          <span className={cn("inline-flex items-center gap-1.5 font-display text-xl font-semibold tracking-tight", wordColor)}>
+            Coco<span className={accentColor}>Smart</span>
+            <Palmtree className={cn("h-4 w-4", accentColor)} strokeWidth={2} aria-hidden="true" />
+          </span>
+          <span className={cn("mt-1 text-[10px] font-medium italic tracking-wide", taglineColor)}>
+            Nature meets Technology
+          </span>
         </span>
       )}
     </span>
@@ -1364,19 +1559,30 @@ export function OrderTracking({ order }: { order: Order }) {
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-coconut">
-      <CoconutLeaf color="#FFFFFF" className="pointer-events-none absolute -left-10 -top-10 w-56 -rotate-[18deg] opacity-[0.08] sm:w-72" />
-      <CoconutLeaf color="#D4AF37" className="pointer-events-none absolute -bottom-16 -right-10 w-64 rotate-[24deg] opacity-[0.14] sm:w-80" />
+    <section className="relative isolate -mt-18 flex min-h-148 items-center overflow-hidden bg-coconut-dark sm:min-h-163 md:min-h-183">
+      <img src="/homepage%202.png" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center" />
+      {/* Left-to-right wash keeps the headline readable over the photo */}
+      <div className="absolute inset-0 bg-gradient-to-r from-coconut-dark/92 via-coconut-dark/45 to-coconut-dark/10" aria-hidden="true" />
+      <div className="absolute inset-0 bg-gradient-to-t from-coconut-dark/65 via-transparent to-transparent" aria-hidden="true" />
+      {/* Darkens the strip behind the transparent header so its links/icons stay legible */}
+      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent" aria-hidden="true" />
+      {/* Dark vignette frames the photo's edges */}
+      <div className="absolute inset-0 shadow-[inset_0_0_160px_60px_rgba(6,20,15,0.6)]" aria-hidden="true" />
 
-      <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24 lg:px-8">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
-          <span className="eyebrow inline-block rounded-full bg-white/10 px-3 py-1.5 text-gold-light">Farm to Bottle, Traceable Always</span>
-          <h1 className="mt-5 font-display text-4xl leading-[1.08] text-white sm:text-5xl lg:text-6xl">
+      <div className="relative mx-auto w-full max-w-7xl px-4 pb-16 pt-34 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="max-w-xl"
+        >
+          <span className="eyebrow inline-block rounded-full bg-white/10 px-3 py-1.5 text-gold-light backdrop-blur-sm">Farm to Bottle, Traceable Always</span>
+          <h1 className="mt-5 font-display text-4xl leading-[1.08] text-white drop-shadow-sm sm:text-5xl lg:text-6xl">
             Pure coconut.
             <br />
             Nothing extra.
           </h1>
-          <p className="mt-5 max-w-md text-base leading-relaxed text-white/80">
+          <p className="mt-5 max-w-md text-base leading-relaxed text-white/85">
             From carefully sourced coconuts to your home — quality, transparency and natural goodness at every step.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -1387,15 +1593,6 @@ export function Hero() {
               <Link to="/about">Explore Our Story</Link>
             </Button>
           </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-          className="relative mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-2xl shadow-lifted"
-        >
-          <ProductMedia label="Fresh coconuts, farm harvest" tone="leaf" showLabel />
         </motion.div>
       </div>
     </section>
@@ -1478,6 +1675,9 @@ export function Navbar() {
   const { isAuthenticated } = useAuth();
   const cartBtnRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isHome = location.pathname === "/";
+  const transparent = isHome && !scrolled;
 
   useEffect(() => {
     cartAnchors.desktop = cartBtnRef.current;
@@ -1490,7 +1690,12 @@ export function Navbar() {
   }
 
   return (
-    <header className={cn("sticky top-0 z-40 bg-coconut transition-shadow duration-300", scrolled && "bg-coconut-dark shadow-lifted")}>
+    <header
+      className={cn(
+        "sticky top-0 z-40 transition-colors duration-300",
+        transparent ? "bg-transparent" : scrolled ? "bg-coconut-dark shadow-lifted" : "bg-coconut"
+      )}
+    >
       <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 sm:px-6 lg:px-8" style={{ height: 72 }}>
         <button className="flex h-10 w-10 items-center justify-center rounded-full text-white lg:hidden" onClick={() => setMenuOpen((v) => !v)} aria-label="Toggle menu" aria-expanded={menuOpen}>
           {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

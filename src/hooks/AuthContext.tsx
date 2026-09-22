@@ -8,6 +8,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
+  loginWithOtp: (email: string, code: string) => Promise<AuthUser>;
   /** Creates the account but does not sign in — the account is unverified until /verify-email succeeds. */
   register: (input: { name: string; email: string; password: string; confirmPassword: string; phone?: string }) => Promise<RegisterResult>;
   logout: () => Promise<void>;
@@ -54,6 +55,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result.user;
   }
 
+  async function loginWithOtp(email: string, code: string) {
+    const result = await authService.verifyLoginOtp({ email, code });
+    tokenStore.setAccessToken(result.accessToken);
+    tokenStore.setRefreshToken(result.refreshToken);
+    setUser(result.user);
+    return result.user;
+  }
+
   async function register(input: { name: string; email: string; password: string; confirmPassword: string; phone?: string }) {
     return authService.register(input);
   }
@@ -71,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, loginWithOtp, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

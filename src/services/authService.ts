@@ -25,6 +25,13 @@ export const authService = {
   login(input: { email: string; password: string }) {
     return apiFetch<AuthResult>("/auth/login", { method: "POST", body: input, auth: false });
   },
+  /** Always succeeds (anti-enumeration) — doesn't reveal whether the email is registered/verified. */
+  requestLoginOtp(email: string) {
+    return apiFetch<{ message: string; devOtp?: string }>("/auth/login-otp", { method: "POST", body: { email }, auth: false });
+  },
+  verifyLoginOtp(input: { email: string; code: string }) {
+    return apiFetch<AuthResult>("/auth/verify-login-otp", { method: "POST", body: input, auth: false });
+  },
   refresh(refreshToken: string) {
     return apiFetch<AuthResult>("/auth/refresh", { method: "POST", body: { refreshToken }, auth: false });
   },

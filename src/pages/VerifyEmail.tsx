@@ -1,77 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Logo, Button, CoconutLeaf } from "@/components/Frontend";
+import { OtpInput, OTP_CODE_LENGTH as CODE_LENGTH } from "@/components/OtpInput";
 import { useToast } from "@/hooks/useToast";
 import { authService } from "@/services/authService";
 import { ApiClientError } from "@/lib/apiClient";
-import { cn } from "@/lib/utils";
 
-const CODE_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 30;
-
-function OtpInput({ value, onChange, disabled }: { value: string; onChange: (next: string) => void; disabled?: boolean }) {
-  const digits = Array.from({ length: CODE_LENGTH }, (_, i) => value[i] ?? "");
-  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
-
-  function setDigit(index: number, char: string) {
-    const next = digits.slice();
-    next[index] = char;
-    onChange(next.join(""));
-  }
-
-  function handleChange(index: number, raw: string) {
-    const char = raw.replace(/\D/g, "").slice(-1);
-    setDigit(index, char);
-    if (char && index < CODE_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  }
-
-  function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Backspace" && !digits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-      setDigit(index - 1, "");
-    }
-    if (e.key === "ArrowLeft" && index > 0) inputRefs.current[index - 1]?.focus();
-    if (e.key === "ArrowRight" && index < CODE_LENGTH - 1) inputRefs.current[index + 1]?.focus();
-  }
-
-  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, CODE_LENGTH);
-    if (!pasted) return;
-    onChange(pasted.padEnd(CODE_LENGTH, "").slice(0, CODE_LENGTH).trimEnd());
-    const focusIndex = Math.min(pasted.length, CODE_LENGTH - 1);
-    inputRefs.current[focusIndex]?.focus();
-  }
-
-  return (
-    <div className="flex justify-center gap-2 sm:gap-3">
-      {digits.map((digit, i) => (
-        <input
-          key={i}
-          ref={(el) => {
-            inputRefs.current[i] = el;
-          }}
-          type="text"
-          inputMode="numeric"
-          autoComplete={i === 0 ? "one-time-code" : "off"}
-          maxLength={1}
-          value={digit}
-          disabled={disabled}
-          onChange={(e) => handleChange(i, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(i, e)}
-          onPaste={handlePaste}
-          className={cn(
-            "h-14 w-11 rounded-md border border-line bg-white text-center text-xl font-bold text-charcoal transition-colors sm:h-16 sm:w-12",
-            "focus:outline-none focus:border-coconut focus:ring-2 focus:ring-coconut-50",
-            disabled && "opacity-60"
-          )}
-        />
-      ))}
-    </div>
-  );
-}
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, User as UserIcon, Phone, Check, X as XIcon } from "lucide-react";
+import { Mail, User as UserIcon, Phone, Check, X as XIcon } from "lucide-react";
 import { Logo, Input, Button, CoconutLeaf } from "@/components/Frontend";
+import { PasswordInput } from "@/components/PasswordInput";
 import { useAuth } from "@/hooks/AuthContext";
 import { authService } from "@/services/authService";
 import { ApiClientError } from "@/lib/apiClient";
@@ -216,36 +217,26 @@ export default function Register() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="relative">
-                <Lock className="pointer-events-none absolute left-4 top-[38px] h-4 w-4 text-charcoal-soft" strokeWidth={1.8} />
-                <Input
-                  label="Password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onBlur={() => markTouched("password")}
-                  error={touched.password && !passwordValid ? "Password doesn't meet all requirements" : undefined}
-                  className="pl-10"
-                  autoComplete="new-password"
-                />
-              </div>
+              <PasswordInput
+                label="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onBlur={() => markTouched("password")}
+                error={touched.password && !passwordValid ? "Password doesn't meet all requirements" : undefined}
+                autoComplete="new-password"
+              />
               {(touched.password || password.length > 0) && <PasswordChecklist password={password} />}
             </div>
 
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-4 top-[38px] h-4 w-4 text-charcoal-soft" strokeWidth={1.8} />
-              <Input
-                label="Confirm password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                onBlur={() => markTouched("confirmPassword")}
-                error={touched.confirmPassword && !confirmValid ? "Passwords don't match" : undefined}
-                className="pl-10 pr-10"
-                autoComplete="new-password"
-              />
-              {confirmValid && <Check className="pointer-events-none absolute right-4 top-[38px] h-4 w-4 text-leaf" strokeWidth={2.5} />}
-            </div>
+            <PasswordInput
+              label="Confirm password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              onBlur={() => markTouched("confirmPassword")}
+              error={touched.confirmPassword && !confirmValid ? "Passwords don't match" : undefined}
+              autoComplete="new-password"
+              indicator={confirmValid ? <Check className="h-4 w-4 text-leaf" strokeWidth={2.5} /> : undefined}
+            />
 
             <Button type="submit" size="lg" className="mt-2 w-full" loading={submitting}>
               Create Account

@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { MapPin, Plus, Pencil, Trash2 } from "lucide-react";
-import { Button, Input, EmptyState, Modal, Badge } from "@/components/Frontend";
+import { Button, Input, EmptyState, Modal, Badge, SearchableSelect } from "@/components/Frontend";
 import { useToast } from "@/hooks/useToast";
 import { addressService, type AddressInput } from "@/services/addressService";
 import { ApiClientError } from "@/lib/apiClient";
+import { INDIAN_STATES, getCitiesForState } from "@/data/indianStates";
 import type { Address } from "@/data/types";
+
+const INDIAN_PHONE_PATTERN = /^[6-9]\d{9}$/;
+const PIN_CODE_PATTERN = /^\d{6}$/;
 
 const emptyForm: AddressInput = {
   fullName: "",
@@ -24,6 +28,7 @@ export default function Addresses() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AddressInput>(emptyForm);
+  const [touched, setTouched] = useState<Partial<Record<keyof AddressInput, boolean>>>({});
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -36,11 +41,28 @@ export default function Addresses() {
 
   useEffect(load, []);
 
-  const formValid = !!(form.fullName && form.phone && form.addressLine1 && form.city && form.state && form.postalCode.length >= 3);
+  const formValid = !!(
+    form.fullName.trim() &&
+    INDIAN_PHONE_PATTERN.test(form.phone) &&
+    form.addressLine1.trim() &&
+    form.state &&
+    form.city &&
+    PIN_CODE_PATTERN.test(form.postalCode)
+  );
+
+  function markTouched(field: keyof AddressInput) {
+    setTouched((t) => ({ ...t, [field]: true }));
+  }
+
+  /** Changing State invalidates whatever City was picked for the old one — never allow a stale, mismatched combination. */
+  function handleStateChange(nextState: string) {
+    setForm((f) => ({ ...f, state: nextState, city: "" }));
+  }
 
   function openAdd() {
     setEditingId(null);
     setForm(emptyForm);
+    setTouched({});
     setModalOpen(true);
   }
 
@@ -52,11 +74,15 @@ export default function Addresses() {
       addressLine1: a.addressLine1,
       addressLine2: a.addressLine2 ?? "",
       city: a.city,
+      // A saved address's State is loaded before City is displayed, so the
+      // City selector's option list (which depends on State) is already
+      // correct by the time it renders — both come from the same object here.
       state: a.state,
       postalCode: a.postalCode,
       country: a.country,
       isDefault: a.isDefault,
     });
+    setTouched({});
     setModalOpen(true);
   }
 
@@ -167,13 +193,32 @@ export default function Addresses() {
 
       <Modal open={modalOpen} onOpenChange={setModalOpen} title={editingId ? "Edit Address" : "Add Address"}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input label="Full name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-          <Input label="Phone number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <Input
+            label="Full name"
+            value={form.fullName}
+            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+            onBlur={() => {
+              markTouched("fullName");
+              setForm((f) => ({ ...f, fullName: f.fullName.trim() }));
+            }}
+            error={touched.fullName && !form.fullName.trim() ? "Full name is required." : undefined}
+          />
+          <Input
+            label="Phone number"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+            onBlur={() => markTouched("phone")}
+            error={touched.phone && form.phone && !INDIAN_PHONE_PATTERN.test(form.phone) ? "Enter a valid 10-digit Indian mobile number." : undefined}
+            inputMode="numeric"
+            maxLength={10}
+          />
           <Input
             label="Address line 1"
             className="sm:col-span-2"
             value={form.addressLine1}
             onChange={(e) => setForm({ ...form, addressLine1: e.target.value })}
+            onBlur={() => markTouched("addressLine1")}
+            error={touched.addressLine1 && !form.addressLine1.trim() ? "Address line is required." : undefined}
           />
           <Input
             label="Address line 2 (optional)"
@@ -181,9 +226,39 @@ export default function Addresses() {
             value={form.addressLine2}
             onChange={(e) => setForm({ ...form, addressLine2: e.target.value })}
           />
-          <Input label="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-          <Input label="State" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
-          <Input label="PIN code" value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} />
+          <SearchableSelect
+            label="State"
+            value={form.state}
+            onChange={handleStateChange}
+            onBlur={() => markTouched("state")}
+            options={INDIAN_STATES as unknown as string[]}
+            placeholder="Select State"
+            searchPlaceholder="Search state…"
+            emptyMessage="No states found"
+            error={touched.state && !form.state ? "Please select a state." : undefined}
+          />
+          <SearchableSelect
+            label="City"
+            value={form.city}
+            onChange={(city) => setForm((f) => ({ ...f, city }))}
+            onBlur={() => markTouched("city")}
+            options={form.state ? getCitiesForState(form.state) : []}
+            placeholder="Select City"
+            searchPlaceholder="Search city…"
+            disabled={!form.state}
+            disabledHint="Select a state first"
+            emptyMessage="No cities found"
+            error={touched.city && form.state && !form.city ? "Please select a city." : undefined}
+          />
+          <Input
+            label="PIN code"
+            value={form.postalCode}
+            onChange={(e) => setForm({ ...form, postalCode: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+            onBlur={() => markTouched("postalCode")}
+            error={touched.postalCode && form.postalCode && !PIN_CODE_PATTERN.test(form.postalCode) ? "Please enter a valid 6-digit PIN code." : undefined}
+            inputMode="numeric"
+            maxLength={6}
+          />
           <Input label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
         </div>
         <div className="mt-6 flex justify-end gap-3">
